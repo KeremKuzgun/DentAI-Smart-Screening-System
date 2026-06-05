@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+runs/
+anaconda_projects/
+*.cache
+.DS_Store
+Thumbs.db

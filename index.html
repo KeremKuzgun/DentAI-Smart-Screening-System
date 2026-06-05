@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DentAI — Ağız İçi Analiz Sistemi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111418;
+  --surface2: #181d24;
+  --surface3: #1e252f;
+  --border: #252d38;
+  --border2: #2e3a47;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #546070;
+  --accent: #3b9eff;
+  --accent2: #1a7fe8;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+  /* Oral sinif renkleri */
+  --c-calculus: #f59e0b;
+  --c-caries: #ef4444;
+  --c-gingivitis: #ec4899;
+  --c-hypodontia: #8b5cf6;
+  --c-tooth_discolation: #f97316;
+  --c-ulcer: #06b6d4;
+  /* Ortodonti sinif renkleri */
+  --c-tt: #22c55e;
+  --c-do: #14b8a6;
+  --c-mr: #6366f1;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,158,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,158,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+header {
+  position: relative;
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10,12,15,0.95);
+  backdrop-filter: blur(12px);
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #3b9eff, #1a7fe8);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.logo-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.logo-text span { color: var(--accent); }
+.header-badge {
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3);
+  border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+
+.hero { text-align: center; margin-bottom: 56px; }
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent);
+  border: 1px solid rgba(59,158,255,0.3); background: rgba(59,158,255,0.06);
+  padding: 6px 14px; border-radius: 20px; margin-bottom: 20px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.hero-tag::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+h1 { font-family: 'Playfair Display', serif; font-size: clamp(32px, 5vw, 52px); font-weight: 700; line-height: 1.15; letter-spacing: -0.03em; margin-bottom: 16px; }
+h1 em { font-style: normal; color: var(--accent); }
+.hero-sub { font-size: 16px; color: var(--text2); max-width: 560px; margin: 0 auto 24px; line-height: 1.7; font-weight: 300; }
+
+/* Sinif rozetleri */
+.class-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.class-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  border: 1px solid; font-family: 'DM Mono', monospace;
+}
+.badge-divider {
+  width: 1px; height: 20px; background: var(--border2); margin: 0 4px; align-self: center;
+}
+
+.drop-zone {
+  border: 1.5px dashed var(--border2); border-radius: 16px;
+  background: var(--surface); padding: 56px 32px; text-align: center;
+  cursor: pointer; transition: all 0.25s ease; position: relative; overflow: hidden;
+}
+.drop-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(59,158,255,0.06) 0%, transparent 70%);
+  opacity: 0; transition: opacity 0.3s;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--surface2); }
+.drop-zone:hover::before, .drop-zone.drag-over::before { opacity: 1; }
+
+.upload-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; margin: 0 auto 20px; transition: transform 0.2s;
+}
+.drop-zone:hover .upload-icon { transform: translateY(-3px); }
+.upload-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.upload-sub { font-size: 14px; color: var(--text3); margin-bottom: 20px; }
+.upload-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 11px 24px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+}
+.upload-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+input[type=file] { display: none; }
+
+.results-grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; animation: fadeUp 0.4s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+.image-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.panel-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+.icon-btn {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.15s;
+}
+.icon-btn:hover { border-color: var(--border2); color: var(--text); }
+.image-container { position: relative; background: #000; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+.result-image { width: 100%; height: auto; display: block; max-height: 500px; object-fit: contain; }
+
+.sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+.stats-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.stats-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
+
+.detection-list { display: flex; flex-direction: column; gap: 7px; max-height: 340px; overflow-y: auto; }
+.detection-list::-webkit-scrollbar { width: 4px; }
+.detection-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.detection-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; font-size: 12px;
+}
+.det-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+.det-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.det-conf { font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+
+.cat-label {
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 10px 0 5px; border-bottom: 1px solid var(--border); margin-bottom: 2px;
+}
+.cat-label:first-child { padding-top: 0; }
+
+.warning-card {
+  background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 16px; padding: 16px 18px;
+}
+.warning-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.warning-title { font-size: 13px; font-weight: 600; color: var(--warning); }
+.warning-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+.info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.info-row:last-child { border-bottom: none; }
+.info-key { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 11px; }
+.info-val { color: var(--text); font-weight: 500; }
+.info-val.good { color: var(--success); }
+.info-section-title { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 0 2px; }
+.info-section-title:first-child { padding-top: 0; }
+
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(10,12,15,0.85);
+  backdrop-filter: blur(8px); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 100; gap: 16px;
+}
+.loading-spinner { width: 48px; height: 48px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); letter-spacing: 0.06em; }
+
+.new-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; color: var(--text2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 9px 18px; font-family: 'DM Sans', sans-serif;
+  font-size: 13px; cursor: pointer; transition: all 0.2s; margin-bottom: 20px;
+}
+.new-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.no-detection { text-align: center; padding: 20px 0; }
+.no-detection .nd-icon { font-size: 32px; margin-bottom: 8px; }
+.no-detection p { font-size: 14px; color: var(--text2); }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2); border: 1px solid var(--danger);
+  color: var(--text); border-radius: 10px; padding: 12px 20px;
+  font-size: 13px; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 200; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.hidden { display: none !important; }
+
+/* Upload tip */
+.upload-tip {
+  text-align: center; margin-top: 14px; font-size: 13px; color: var(--text3);
+}
+.upload-tip a {
+  color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 500;
+}
+.upload-tip a:hover { text-decoration: underline; }
+
+/* Guide modal */
+.guide-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+}
+.guide-modal { position: fixed; inset: 0; z-index: 160; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.guide-content {
+  position: relative; z-index: 1;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+.guide-content::-webkit-scrollbar { width: 5px; }
+.guide-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.guide-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0;
+  background: var(--surface); z-index: 5; border-radius: 20px 20px 0 0;
+}
+.guide-header h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
+.guide-close {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.guide-close:hover { border-color: var(--danger); color: var(--danger); }
+.guide-body { padding: 20px 24px; }
+.guide-quick {
+  background: rgba(59,158,255,0.06); border: 1px solid rgba(59,158,255,0.2);
+  border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--accent);
+  font-family: 'DM Mono', monospace; text-align: center; margin-bottom: 20px;
+}
+.guide-sec-title {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.08em; margin: 20px 0 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.guide-sec-title:first-child { margin-top: 0; }
+.guide-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.guide-card {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; text-align: center; transition: border-color 0.2s;
+}
+.guide-card:hover { border-color: var(--border2); }
+.guide-card-icon { font-size: 32px; margin-bottom: 8px; line-height: 1; }
+.guide-card-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.guide-card-desc { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 6px; }
+.guide-card-tags {
+  display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;
+}
+.guide-tag {
+  font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 6px;
+  border-radius: 4px; background: rgba(59,158,255,0.1); color: var(--accent);
+}
+.guide-card.required { border-color: rgba(59,158,255,0.3); }
+.guide-card.optional { border-color: rgba(245,158,11,0.2); }
+.guide-donts { margin-top: 20px; }
+.guide-dont {
+  display: flex; align-items: flex-start; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text2); line-height: 1.5;
+}
+.guide-dont:last-child { border-bottom: none; }
+.guide-dont-x { color: var(--danger); font-weight: 700; flex-shrink: 0; }
+
+/* Smart tip card */
+.tip-card {
+  background: rgba(59,158,255,0.06); border: 1px solid rgba(59,158,255,0.2);
+  border-radius: 16px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start;
+}
+.tip-card-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+.tip-card-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.tip-card-text strong { color: var(--accent); }
+
+@media (max-width: 768px) {
+  .results-grid { grid-template-columns: 1fr; }
+  .main { padding: 24px 16px; }
+  .badge-divider { display: none; }
+  .guide-cards { grid-template-columns: 1fr; }
+  .guide-content { max-height: 90vh; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🦷</div>
+    <div class="logo-text">Dent<span>AI</span></div>
+  </div>
+  <div class="header-badge">9 Sınıf · Dual YOLOv8s</div>
+</header>
+
+<div class="main">
+  <div class="hero" id="hero-section">
+    <div class="hero-tag">Yapay Zeka Destekli Ağız İçi Analiz</div>
+    <h1>Ağız Sağlığı & Ortodonti<br><em>Ön Değerlendirme</em></h1>
+    <p class="hero-sub">Derin öğrenme tabanlı 9 farklı ağız sağlığı ve ortodonti problemini tespit eden dual-model sistem. Görüntünüzü yükleyin, anında analiz alın.</p>
+    <div class="class-badges">
+      <span class="class-badge" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08)">🔴 Çürük</span>
+      <span class="class-badge" style="color:#f59e0b;border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.08)">🟡 Diş Taşı</span>
+      <span class="class-badge" style="color:#ec4899;border-color:rgba(236,72,153,0.3);background:rgba(236,72,153,0.08)">🩷 Diş Eti İltihabı</span>
+      <span class="class-badge" style="color:#8b5cf6;border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.08)">🟣 Eksik Diş</span>
+      <span class="class-badge" style="color:#f97316;border-color:rgba(249,115,22,0.3);background:rgba(249,115,22,0.08)">🟠 Renk Değişikliği</span>
+      <span class="class-badge" style="color:#06b6d4;border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.08)">🔵 Ağız Ülseri</span>
+      <span class="badge-divider"></span>
+      <span class="class-badge" style="color:#22c55e;border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.08)">🟢 Diş Torsiyonu</span>
+      <span class="class-badge" style="color:#14b8a6;border-color:rgba(20,184,166,0.3);background:rgba(20,184,166,0.08)">🩵 Derin Overjet</span>
+      <span class="class-badge" style="color:#6366f1;border-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.08)">🔮 Alt Çene Geriliği</span>
+    </div>
+  </div>
+
+  <div class="upload-section" id="upload-section">
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-title">Görüntü Yükle</div>
+      <div class="upload-sub">Sürükle & bırak veya seç · JPG, PNG, WEBP</div>
+      <button class="upload-btn" type="button">Dosya Seç</button>
+    </div>
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" onchange="handleFile(this.files[0])">
+    <div class="upload-tip">💡 En iyi sonuç: dişler kapalı · yakın çekim · flaş açık · <a onclick="openGuide()">Çekim kılavuzu →</a></div>
+  </div>
+
+  <div id="results-section" class="hidden">
+    <button class="new-btn" onclick="resetApp()">← Yeni Analiz</button>
+    <div class="results-grid">
+      <div class="image-panel">
+        <div class="panel-header">
+          <span class="panel-title">Analiz Sonucu</span>
+          <button class="icon-btn" onclick="downloadResult()" title="İndir">↓</button>
+        </div>
+        <div class="image-container">
+          <img id="result-img" class="result-image" alt="Analiz sonucu">
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="stats-card">
+          <div class="stats-title">Tespit Özeti</div>
+          <div id="detection-summary"></div>
+        </div>
+
+        <div class="tip-card hidden" id="smart-tip">
+          <div class="tip-card-icon">💡</div>
+          <div class="tip-card-text" id="smart-tip-text"></div>
+        </div>
+
+        <div class="warning-card">
+          <div class="warning-header">
+            <span>⚠️</span>
+            <span class="warning-title">Önemli Uyarı</span>
+          </div>
+          <p class="warning-text">Bu sistem yalnızca <strong>ön değerlendirme</strong> amaçlıdır. Kesin tanı için mutlaka bir diş hekimine başvurunuz. Yapay zeka tespiti tıbbi muayenenin yerini tutmaz.</p>
+        </div>
+
+       <div class="info-card">
+  	<div class="stats-title">Model Bilgisi</div>
+
+  	<div class="info-section-title">🦷 Ağız Sağlığı Modeli</div>
+  	<div class="info-row"><span class="info-key">Model</span><span class="info-val">YOLOv8s</span></div>
+  	<div class="info-row"><span class="info-key">mAP@0.5</span><span class="info-val good">80.3%</span></div>
+  	<div class="info-row"><span class="info-key">Precision</span><span class="info-val good">74.2%</span></div>
+  	<div class="info-row"><span class="info-key">Recall</span><span class="info-val good">76.4%</span></div>
+  	<div class="info-row"><span class="info-key">Sınıf</span><span class="info-val">6</span></div>
+
+
+  	<div class="info-section-title">🔬 Ortodonti Modeli</div>
+  	<div class="info-row"><span class="info-key">Model</span><span class="info-val">YOLOv8s</span></div>
+  	<div class="info-row"><span class="info-key">mAP@0.5</span><span class="info-val good">66.7%</span></div>
+  	<div class="info-row"><span class="info-key">Precision</span><span class="info-val good">61.7%</span></div>
+  	<div class="info-row"><span class="info-key">Recall</span><span class="info-val good">70.6%</span></div>
+ 	<div class="info-row"><span class="info-key">Sınıf</span><span class="info-val">3</span></div>
+
+
+ 
+       </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cekim Kilavuzu Modal -->
+<div class="guide-modal hidden" id="guide-modal">
+  <div class="guide-overlay" onclick="closeGuide()"></div>
+  <div class="guide-content">
+    <div class="guide-header">
+      <h2>📸 Çekim Kılavuzu</h2>
+      <button class="guide-close" onclick="closeGuide()">✕</button>
+    </div>
+    <div class="guide-body">
+      <div class="guide-quick">💡 Altın kural: dişler kapalı · yakın çekim · flaş açık</div>
+
+      <div class="guide-sec-title">🔬 Ortodonti Analizi İçin</div>
+      <div class="guide-cards">
+        <div class="guide-card required">
+          <div class="guide-card-icon">😬</div>
+          <div class="guide-card-title">Ön (Frontal)</div>
+          <div class="guide-card-desc">Dişler <strong>kapalı</strong>, dudaklar aralık yani alt ve üst dişler gözükmeli, tam karşıdan yatay açıyla.</div>
+          <div class="guide-card-tags">
+            <span class="guide-tag">Diş Torsiyonu</span>
+            <span class="guide-tag">Derin Overjet</span>
+          </div>
+        </div>
+        <div class="guide-card required">
+          <div class="guide-card-icon">🗣️</div>
+          <div class="guide-card-title">Yan (Lateral)</div>
+          <div class="guide-card-desc">Dişler <strong>kapalı</strong>, yanak geri çekili, azı kapanışı görünecek şekilde.</div>
+          <div class="guide-card-tags">
+            <span class="guide-tag">Derin Overjet</span>
+            <span class="guide-tag">Alt Çene Geriliği</span>
+          </div>
+        </div>
+        <div class="guide-card optional" style="grid-column: 1 / -1;">
+          <div class="guide-card-icon">🪞</div>
+          <div class="guide-card-title">Oklüzal / Kuşbakışı (Opsiyonel)</div>
+          <div class="guide-card-desc">Ağız açık, ayna ile diş kavisini tam üstten veya alttan çekin. Sadece torsiyonu daha net yakalamak için.</div>
+          <div class="guide-card-tags">
+            <span class="guide-tag">Diş Torsiyonu</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-sec-title">🦷 Ağız Sağlığı Analizi İçin</div>
+      <div class="guide-cards">
+        <div class="guide-card required">
+          <div class="guide-card-icon">🔦</div>
+          <div class="guide-card-title">Genel Ağız İçi</div>
+          <div class="guide-card-desc"><strong>Flaş açık</strong>, dudaklar iyice aralık, diş–diş eti birleşim yeri görünür.</div>
+          <div class="guide-card-tags"><span class="guide-tag">Çürük</span><span class="guide-tag">Diş Taşı</span><span class="guide-tag">İltihap</span></div>
+        </div>
+        <div class="guide-card required">
+          <div class="guide-card-icon">🔍</div>
+          <div class="guide-card-title">Yakın Çekim</div>
+          <div class="guide-card-desc">Lezyon bölgesini (ülser, leke) kadrajın ortasına alarak yakından, net çekin.</div>
+          <div class="guide-card-tags"><span class="guide-tag">Ülser</span><span class="guide-tag">Renk Değ.</span><span class="guide-tag">Eksik Diş</span></div>
+        </div>
+      </div>
+
+      <div class="guide-donts">
+        <div class="guide-sec-title">❌ Yapılmaması Gerekenler</div>
+        <div class="guide-dont"><span class="guide-dont-x">✕</span> Sadece üst dişleri göstermek — alt çene referansı olmadan model yanlış overjet tespit edebilir.</div>
+        <div class="guide-dont"><span class="guide-dont-x">✕</span> Kamerayı yüze çok uzak tutup tüm yüzü kadrajlamak — sadece ağız içi doldurmalı.</div>
+        <div class="guide-dont"><span class="guide-dont-x">✕</span> Ağızda yoğun tükürük veya yiyecek artığı varken çekmek.</div>
+        <div class="guide-dont"><span class="guide-dont-x">✕</span> Hareket hâlinde titrek, bulanık görüntüler yakalamak.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay hidden" id="loading">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Analiz ediliyor...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'http://localhost:8000';
+
+const CLASS_INFO = {
+  // Agiz sagligi (6)
+  'calculus':          { tr: 'Diş Taşı',           color: '#f59e0b', emoji: '🟡', cat: 'oral' },
+  'caries':            { tr: 'Çürük',               color: '#ef4444', emoji: '🔴', cat: 'oral' },
+  'gingivitis':        { tr: 'Diş Eti İltihabı',   color: '#ec4899', emoji: '🩷', cat: 'oral' },
+  'hypodontia':        { tr: 'Eksik Diş',           color: '#8b5cf6', emoji: '🟣', cat: 'oral' },
+  'tooth_discolation': { tr: 'Renk Değişikliği',   color: '#f97316', emoji: '🟠', cat: 'oral' },
+  'ulcer':             { tr: 'Ağız Ülseri',         color: '#06b6d4', emoji: '🔵', cat: 'oral' },
+  // Ortodonti (3)
+  'TT':                { tr: 'Diş Torsiyonu',       color: '#22c55e', emoji: '🟢', cat: 'orthodontic' },
+  'DO':                { tr: 'Derin Overjet',        color: '#14b8a6', emoji: '🩵', cat: 'orthodontic' },
+  'MR':                { tr: 'Alt Çene Geriliği',   color: '#6366f1', emoji: '🔮', cat: 'orthodontic' },
+};
+
+function getClassInfo(label) {
+  return CLASS_INFO[label] || { tr: label, color: '#94a3b8', emoji: '⚪', cat: 'unknown' };
+}
+
+function groupBoxesToHTML(boxes) {
+  const grouped = {};
+  boxes.forEach(b => {
+    if (!grouped[b.label]) grouped[b.label] = [];
+    grouped[b.label].push(b.confidence);
+  });
+  return Object.entries(grouped).map(([label, confs]) => {
+    const info = getClassInfo(label);
+    const maxConf = Math.max(...confs);
+    return `
+      <div class="detection-item" style="border-color:${info.color}22">
+        <span class="det-label">
+          <span class="det-dot" style="background:${info.color}"></span>
+          ${info.emoji} ${info.tr}
+          ${confs.length > 1 ? `<span style="font-size:10px;color:var(--text3)">(${confs.length}x)</span>` : ''}
+        </span>
+        <span class="det-conf" style="background:${info.color}18;color:${info.color};border:1px solid ${info.color}33">${(maxConf*100).toFixed(0)}%</span>
+      </div>`;
+  }).join('');
+}
+
+let currentResultUrl = null;
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  const allowed = ['image/jpeg','image/png','image/jpg','image/webp'];
+  if (!allowed.includes(file.type)) { showToast('Sadece JPG, PNG veya WEBP yükleyebilirsiniz.'); return; }
+  showLoading(true);
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${API_URL}/predict`, { method: 'POST', body: formData });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Sunucu hatası'); }
+    const data = await res.json();
+    showResults(data);
+  } catch (err) {
+    showToast(`Hata: ${err.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+function showResults(data) {
+  document.getElementById('result-img').src = data.annotated_image;
+  currentResultUrl = data.annotated_image;
+
+  const summary = document.getElementById('detection-summary');
+  const smartTip = document.getElementById('smart-tip');
+  const smartTipText = document.getElementById('smart-tip-text');
+
+  if (data.detections === 0) {
+    summary.innerHTML = `<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:8px">✅</div><p style="font-size:14px;color:var(--text2)">Problem tespit edilmedi</p></div>`;
+    smartTip.classList.remove('hidden');
+    smartTipText.innerHTML = 'Farklı açılardan fotoğraf yüklemeyi deneyin. Ortodonti için <strong>dişler kapalı yan çekim</strong>, ağız sağlığı için <strong>flaşlı yakın çekim</strong> önerilir. <a onclick="openGuide()" style="color:var(--accent);cursor:pointer">Kılavuza bak →</a>';
+  } else {
+    const oralBoxes = data.boxes.filter(b => b.category === 'oral');
+    const orthoBoxes = data.boxes.filter(b => b.category === 'orthodontic');
+
+    let html = `
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
+        <span style="font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1;color:var(--danger)">${data.detections}</span>
+        <span style="font-size:13px;color:var(--text2);line-height:1.4">tespit<br>edildi</span>
+      </div>
+      <div class="detection-list">`;
+
+    if (oralBoxes.length > 0) {
+      html += `<div class="cat-label">🦷 Ağız Sağlığı</div>`;
+      html += groupBoxesToHTML(oralBoxes);
+    }
+    if (orthoBoxes.length > 0) {
+      html += `<div class="cat-label">🔬 Ortodonti</div>`;
+      html += groupBoxesToHTML(orthoBoxes);
+    }
+
+    html += '</div>';
+    summary.innerHTML = html;
+
+    // Akilli oneri
+    if (orthoBoxes.length === 0 && oralBoxes.length > 0) {
+      smartTip.classList.remove('hidden');
+      smartTipText.innerHTML = 'Ortodontik bulgu tespit edilmedi. Daha kapsamlı analiz için <strong>dişler kapalıyken yan (lateral) görünüm</strong> de yüklemeyi deneyin.';
+    } else if (oralBoxes.length === 0 && orthoBoxes.length > 0) {
+      smartTip.classList.remove('hidden');
+      smartTipText.innerHTML = 'Ağız sağlığı bulgusu tespit edilmedi. Çürük ve diş taşı tespiti için <strong>flaş açık, yakın çekim</strong> yüklemeyi deneyin.';
+    } else {
+      smartTip.classList.add('hidden');
+    }
+  }
+
+  document.getElementById('upload-section').classList.add('hidden');
+  document.getElementById('hero-section').classList.add('hidden');
+  document.getElementById('results-section').classList.remove('hidden');
+}
+
+function resetApp() {
+  document.getElementById('upload-section').classList.remove('hidden');
+  document.getElementById('hero-section').classList.remove('hidden');
+  document.getElementById('results-section').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+  document.getElementById('smart-tip').classList.add('hidden');
+  currentResultUrl = null;
+}
+
+function downloadResult() {
+  if (!currentResultUrl) return;
+  const a = document.createElement('a');
+  a.href = currentResultUrl;
+  a.download = `dentai_${Date.now()}.jpg`;
+  a.click();
+}
+
+function showLoading(show) { document.getElementById('loading').classList.toggle('hidden', !show); }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function openGuide() { document.getElementById('guide-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+function closeGuide() { document.getElementById('guide-modal').classList.add('hidden'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGuide(); });
+</script>
+</body>
+</html>
