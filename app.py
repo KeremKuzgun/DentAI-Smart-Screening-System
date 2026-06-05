@@ -7,7 +7,7 @@ import cv2
 import base64
 from pathlib import Path
 
-# weights_only=False monkey-patch — en basta yapilmali
+
 import torch
 _original_load = torch.load
 def _patched_load(*args, **kwargs):
@@ -148,7 +148,7 @@ async def predict(file: UploadFile = File(...)):
             "category": "oral"
         })
 
-    # ---- 2. Ortodonti modeli (varsa) ----
+    # ---- 2. Ortodonti modeli ----
     if model_ortho is not None:
         ortho_results = model_ortho.predict(source=img, conf=0.35, iou=0.5, verbose=False)
         for box in ortho_results[0].boxes:
@@ -164,7 +164,7 @@ async def predict(file: UploadFile = File(...)):
                 "category": "orthodontic"
             })
 
-    # ---- Gorsellestirilmis goruntu ----
+
     annotated = draw_boxes(img, boxes_data)
     _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 90])
     img_base64 = base64.b64encode(buffer).decode("utf-8")
