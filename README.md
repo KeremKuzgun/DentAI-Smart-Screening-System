@@ -1,4 +1,4 @@
-# 🦷 DentAI v2 — Ağız Sağlığı & Ortodonti Ön Değerlendirme Sistemi
+# 🦷 DentAI  — Ağız Sağlığı & Ortodonti Ön Değerlendirme Sistemi
 
 Derin öğrenme tabanlı **9 farklı** ağız sağlığı ve ortodonti problemini tespit eden dual-model web uygulaması.
 
@@ -19,14 +19,16 @@ Derin öğrenme tabanlı **9 farklı** ağız sağlığı ve ortodonti problemin
 
 ```bash
 # 1. Repoyu klonla
-git clone https://github.com/KULLANICI_ADIN/dentai-v2.git
-cd dentai-v2
+git clone https://github.com/KeremKuzgun/DentAI-Smart-Screening-System.git
+cd DentAI-Smart-Screening-System
 
 # 2. Bağımlılıkları kur
 pip install -r requirements.txt
 
 # 3. Çalıştır
 python app.py
+veya
+py -3.11 app.py
 ```
 
 Tarayıcıda **http://localhost:8000** adresini aç.
@@ -61,7 +63,7 @@ dentai-v2/
 - **Frontend:** Vanilla HTML/CSS/JS
 - **Eğitim Verileri:**
   - Ağız Sağlığı: Oral Disease Detection Dataset
-  - Ortodonti: OMNI Dataset (COCO format, 4166 görüntü)
+  - Ortodonti: OMNI Dataset (COCO format, 4166 görüntü)(Yolo formatına dönüştürüldü)
 
 ## Uyarı
 
